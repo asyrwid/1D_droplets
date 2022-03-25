@@ -1,4 +1,4 @@
-# 1. Put this file in the same folder as your 'driver' code 
+# 1. Put this file in the same folder as your 'driver' code
 #    (the code containing the 'main' function).
 
 # 2. Edit LIBRARY_DIR to point at the location of your ITensor Library
@@ -11,30 +11,33 @@ TDVP_DIR=$(LIBRARY_DIR)/tdvp
 #    set APP to 'myappname'. Running 'make' will compile the app.
 #    Running 'make debug' will make a program called 'myappname-g'
 #    which includes debugging symbols and can be used in gdb (Gnu debugger);
-APP=bose_bose_mixture
-#APP=bose-bose
+APP=droplet
 
 # 4. Add any headers your program depends on here. The make program
 #    will auto-detect if these headers have changed and recompile your app.
-HEADERS=#$(TDVP_DIR)/tdvp.h
+HEADERS=$(TDVP_DIR)/tdvp.h funcs/general.h
+
 
 # 5. For any additional .cc (source) files making up your project,
 #    add their full filenames here.
-CCFILES=$(APP).cpp
+CCFILES=$(APP).cc funcs/general.cc
+
 
 #################################################################
 #################################################################
 #################################################################
 #################################################################
-
 
 include $(LIBRARY_DIR)/this_dir.mk
 include $(LIBRARY_DIR)/options.mk
 
 TENSOR_HEADERS=$(LIBRARY_DIR)/itensor/core.h
 
-CCFLAGS+=-I$(TDVP_DIR)
-CCGFLAGS+=-I$(TDVP_DIR)
+CCFLAGS+=-I$(TDVP_DIR)  -Ifuncs
+CCGFLAGS+=-I$(TDVP_DIR) -Ifuncs
+
+export OMP_NUM_THREADS=1
+
 
 #Mappings --------------
 OBJECTS=$(patsubst %.cc,%.o, $(CCFILES))
@@ -54,7 +57,7 @@ build: $(APP)
 debug: $(APP)-g
 
 $(APP): $(OBJECTS) $(ITENSOR_LIBS)
-	$(CCCOM) $(CCFLAGS) $(OBJECTS) -o $(APP) $(LIBFLAGS) -std=c++17
+	$(CCCOM) $(CCFLAGS) $(OBJECTS) -o $(APP) $(LIBFLAGS)
 
 $(APP)-g: mkdebugdir $(GOBJECTS) $(ITENSOR_GLIBS)
 	$(CCCOM) $(CCGFLAGS) $(GOBJECTS) -o $(APP)-g $(LIBGFLAGS)
@@ -64,4 +67,7 @@ clean:
 
 mkdebugdir:
 	mkdir -p .debug_objs
+
+run: droplet
+		./droplet >out
 
