@@ -145,6 +145,11 @@ double get_entanglement_entropy(MPS& psi, SiteSet& sites, int lattice_site, stri
 
 
 
+
+ 
+
+
+
 tuple<double, double, double> get_observables(MPS& psi, SiteSet& sites,  string filename_parameters){
   //Calculate:
   // 1. densities
@@ -152,6 +157,9 @@ tuple<double, double, double> get_observables(MPS& psi, SiteSet& sites,  string 
   // 3. Superfluid fraction SF, expectation value of the field operator <a_i0>, and Pairsuperfluid value (SF_val, a_i0_val, PSF_val)
   auto M = length(psi);
   int L = M/2;
+  int i0 = L/2;
+  int i0_site_boson_a = 2*i0;
+  int i0_site_boson_b = 2*i0 - 1;
   ///////////////////////////////////////////////////////////////////////////////////////////////
   //                                 Measure densities
   vector<complex<double>> density_boson_a(L), density_boson_b(L); 
@@ -193,22 +201,17 @@ tuple<double, double, double> get_observables(MPS& psi, SiteSet& sites,  string 
   ///////////////////////////////////////////////////////////////////////////////////////////////
   //                                 Measure correlations
 
-    int i_0 = L/2;
-    int i0_site_boson_a = 2*i_0 - 1;
-    int i0_site_boson_b = 2*i_0;
-
 
     double SF_val = 0;
     vector<vector<double>> corr_one_body_boson_a_matrix(L, vector<double> (L,0));
     vector<vector<double>> corr_density_density_boson_a_matrix(L, vector<double> (L,0));
-    vector<double> p_vector(L,0);
 
     for( int i_site = 1; i_site <= L; i_site++ ){
         for (int j_site = 1; j_site <= L; j_site++){
 
-          int j_site_boson_a = 2*j_site;
-          int i_site_boson_a = 2*i_site;
-   
+          int j_site_boson_a = 2*j_site-1;
+          int i_site_boson_a = 2*i_site-1;
+          /*Tutaj sie cos spierdolilo*/
           auto psi_tmp = psi;
           psi_tmp.position(i_site_boson_a);
           auto a_i = op(sites,"A",i_site_boson_a);
@@ -222,10 +225,11 @@ tuple<double, double, double> get_observables(MPS& psi, SiteSet& sites,  string 
           auto new_a_dagger_j = a_dagger_j*psi_tmp(j_site_boson_a);
           new_a_dagger_j.noPrime();
           psi_tmp.set(j_site_boson_a,new_a_dagger_j);
+        
           auto corr = innerC(psi,psi_tmp);
           corr_one_body_boson_a_matrix[i_site - 1][j_site - 1] = corr.real();
           SF_val = SF_val + corr_one_body_boson_a_matrix[i_site - 1][j_site - 1];
-
+        
           // <n^a_i n^a_j> - <n^a_i><n^a_j>
           psi_tmp = psi;
           psi_tmp.position(i_site_boson_a);
@@ -234,6 +238,7 @@ tuple<double, double, double> get_observables(MPS& psi, SiteSet& sites,  string 
           new_N_i.noPrime();
           psi_tmp.set(i_site_boson_a,new_N_i);
           psi_tmp.noPrime();
+       
 
           psi_tmp.position(j_site_boson_a);
           auto N_j = op(sites,"N",j_site_boson_a);
@@ -243,34 +248,15 @@ tuple<double, double, double> get_observables(MPS& psi, SiteSet& sites,  string 
           auto corr_density_density_boson_a = innerC(psi,psi_tmp);
 
           complex<double> na_i_na_j = eltC(dag(prime(psi(j_site_boson_a), "Site")) * op(sites, "N", j_site_boson_a) * psi(j_site_boson_a)) - eltC(dag(prime(psi(i_site_boson_a), "Site")) * op(sites, "N", i_site_boson_a) * psi(i_site_boson_a));
-
+ 
           corr_density_density_boson_a_matrix[i_site - 1][j_site - 1] = corr_density_density_boson_a.real() - na_i_na_j.real();
+
         }
     }    
     SF_val = SF_val/L/N_a.real();
 
- 
-
-    // Calculate one-body density matrix rho^{a}_{j,i0} = <a^\dagger_j a_i0> for fist component "a"
-    // where i_0 = L/2
-    vector<complex<double>> correlations_one_body_boson_a(L);
-    for (int j_site = 1; j_site <= L; j_site++){
-      auto psi_tmp = psi;
-      int j_site_boson_a = 2*j_site-1;
-      psi_tmp.position(i0_site_boson_a);
-      auto a_dagger_i = op(sites,"Adag",i0_site_boson_a);
-      auto new_a_dagger_i = a_dagger_i*psi_tmp(i0_site_boson_a);
-      new_a_dagger_i.noPrime();
-      psi_tmp.set(i0_site_boson_a,new_a_dagger_i);
-
-      psi_tmp.position(j_site_boson_a);
-      auto a_j = op(sites,"A",j_site_boson_a);
-      auto new_a_j = a_j*psi_tmp(j_site_boson_a);
-      new_a_j.noPrime();
-      psi_tmp.set(j_site_boson_a,new_a_j);
-      auto corr_one_body = innerC(psi,psi_tmp);
-      correlations_one_body_boson_a[j_site - 1] = corr_one_body;
-    }
+  
+   
 
     // Calculate two-body density matrix rho^{aa}_{j,i0} = <a^\dagger_j a^\dagger_j a_i0 a_i0>
     // where i_0 = L/2  
@@ -282,28 +268,28 @@ tuple<double, double, double> get_observables(MPS& psi, SiteSet& sites,  string 
       auto psi_tmp2 = psi;
 
       psi_tmp.position(i0_site_boson_a);
-      auto a_dagger_i = op(sites,"Adag",i0_site_boson_a);
+      auto a_dagger_i = op(sites,"A",i0_site_boson_a);
       auto new_a_dagger_i = a_dagger_i*psi_tmp(i0_site_boson_a);
       new_a_dagger_i.noPrime();
       psi_tmp.set(i0_site_boson_a,new_a_dagger_i);
       psi_tmp.noPrime();
 
       psi_tmp.position(i0_site_boson_a);
-      a_dagger_i = op(sites,"Adag",i0_site_boson_a);
+      a_dagger_i = op(sites,"A",i0_site_boson_a);
       new_a_dagger_i = a_dagger_i*psi_tmp(i0_site_boson_a);
       new_a_dagger_i.noPrime();
       psi_tmp.set(i0_site_boson_a,new_a_dagger_i);    
       psi_tmp.noPrime();      
       
       psi_tmp2.position(j_site_boson_a);
-      auto a_dagger_j = op(sites,"Adag",j_site_boson_a);
+      auto a_dagger_j = op(sites,"A",j_site_boson_a);
       auto new_a_dagger_j = a_dagger_j*psi_tmp2(j_site_boson_a);
       new_a_dagger_j.noPrime();
       psi_tmp2.set(j_site_boson_a,new_a_dagger_j);
       psi_tmp2.noPrime();
 
       psi_tmp2.position(j_site_boson_a);
-      a_dagger_j = op(sites,"Adag",j_site_boson_a);
+      a_dagger_j = op(sites,"A",j_site_boson_a);
       new_a_dagger_j = a_dagger_j*psi_tmp2(j_site_boson_a);
       new_a_dagger_j.noPrime();
       psi_tmp2.set(j_site_boson_a,new_a_dagger_j);
@@ -316,51 +302,43 @@ tuple<double, double, double> get_observables(MPS& psi, SiteSet& sites,  string 
     //                                                   = <a^\dagger_j b^\dagger_j b_i0 a_i0> -  <a^dagger_j a_i0>^2
     // where i_0 = L/2  
     vector<complex<double>> correlations_two_body_boson_a_boson_b(L); 
-    for (int j_site = 1; j_site <= L; j_site++){
+      for (int j_site = 1; j_site <= L; j_site++){
       int j_site_boson_a = 2*j_site-1;
       int j_site_boson_b = 2*j_site;
 
       auto psi_tmp = psi;
-      auto psi_tmp2 = psi;
 
       psi_tmp.position(i0_site_boson_a);
-      auto a_dagger_i = op(sites,"Adag",i0_site_boson_a);
-      auto new_a_dagger_i = a_dagger_i*psi_tmp(i0_site_boson_a);
-      new_a_dagger_i.noPrime();
-      psi_tmp.set(i0_site_boson_a,new_a_dagger_i);
+      auto a_i = op(sites,"A",i0_site_boson_a);
+      auto new_a_i = a_i*psi_tmp(i0_site_boson_a);
+      new_a_i.noPrime();
+      psi_tmp.set(i0_site_boson_a,new_a_i);
       psi_tmp.noPrime();
 
       psi_tmp.position(i0_site_boson_b);
-      auto b_dagger_i = op(sites,"Adag",i0_site_boson_b);
-      auto new_b_dagger_i = b_dagger_i*psi_tmp(i0_site_boson_b);
-      new_b_dagger_i.noPrime();
-      psi_tmp.set(i0_site_boson_b,new_b_dagger_i);    
+      a_i = op(sites,"A",i0_site_boson_b);
+      new_a_i = a_i*psi_tmp(i0_site_boson_b);
+      new_a_i.noPrime();
+      psi_tmp.set(i0_site_boson_b,new_a_i);    
       psi_tmp.noPrime();      
       
-      psi_tmp2.position(j_site_boson_a);
+      psi_tmp.position(j_site_boson_a);
       auto a_dagger_j = op(sites,"Adag",j_site_boson_a);
-      auto new_a_dagger_j = a_dagger_j*psi_tmp2(j_site_boson_a);
+      auto new_a_dagger_j = a_dagger_j*psi_tmp(j_site_boson_a);
       new_a_dagger_j.noPrime();
-      psi_tmp2.set(j_site_boson_a,new_a_dagger_j);
-      psi_tmp2.noPrime();
+      psi_tmp.set(j_site_boson_a,new_a_dagger_j);
+      psi_tmp.noPrime();
 
-      psi_tmp2.position(j_site_boson_b);
-      auto b_dagger_j = op(sites,"Adag",j_site_boson_b);
-      auto new_b_dagger_j = b_dagger_j*psi_tmp2(j_site_boson_b);
-      new_b_dagger_j.noPrime();
-      psi_tmp2.set(j_site_boson_b,new_b_dagger_j);
-      psi_tmp2.noPrime();
-      correlations_two_body_boson_a_boson_b[j_site-1] = innerC(psi_tmp2,psi_tmp) - pow(correlations_one_body_boson_a[j_site - 1],2);
+      psi_tmp.position(j_site_boson_b);
+      a_dagger_j = op(sites,"Adag",j_site_boson_b);
+      new_a_dagger_j = a_dagger_j*psi_tmp(j_site_boson_b);
+      new_a_dagger_j.noPrime();
+      psi_tmp.set(j_site_boson_b,new_a_dagger_j);
+      psi_tmp.noPrime();
+      correlations_two_body_boson_a_boson_b[j_site-1] = innerC(psi,psi_tmp) - pow(corr_density_density_boson_a_matrix[j_site - 1][L/2],2);
     }
     /////////////////////////////////////////////////////////////////////////////////
-
-
-
     
-
-
-
-
     // Calculate structure factor S(k) and M(k) arxiv:2112.10386
     // 
     int N_k = L-1;
@@ -371,7 +349,6 @@ tuple<double, double, double> get_observables(MPS& psi, SiteSet& sites,  string 
     vector<complex<double>> S_vector(N_k, 0);
     vector<complex<double>> M_vector(N_k, 0);
     for (int k_int = 0; k_int<N_k; k_int++){
-        //double k = k_min + k_int*dk;
         double k = k_int*2.0*pi/L;
         for(int i = 0; i<L; i++){
             for(int j = 0; j<L; j++){
@@ -398,7 +375,7 @@ tuple<double, double, double> get_observables(MPS& psi, SiteSet& sites,  string 
   for(int j_site = 1; j_site<=L; j_site++){
     file_data <<j_site<<" "<<density_boson_a[j_site].real()<<" "<<std_density_boson_a[j_site].real();
     file_data <<" "<<density_boson_b[j_site].real()<<" "<<std_density_boson_b[j_site].real();
-    file_data <<" "<<correlations_one_body_boson_a[j_site-1].real();
+    file_data <<" "<<corr_density_density_boson_a_matrix[j_site-1][L/2];
     file_data <<" "<<correlations_two_body_boson_a_boson_a[j_site-1].real();
     file_data <<" "<<correlations_two_body_boson_a_boson_b[j_site-1].real();
     file_data <<" "<<corr_density_density_boson_a_matrix[j_site - 1][L/2];
