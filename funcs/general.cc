@@ -98,3 +98,23 @@ MPS initial_state(Boson sites, int Natoms){
   auto psi = MPS(state);
   return psi;
 }
+
+MPS annihilate_boson(Boson sites, MPS ket, int site){
+
+  ket.position(site);
+  auto newket = noprime(ket(site) * op(sites, "A", site));
+  ket.set(site, newket);
+
+  return ket;
+
+}
+
+MPS create_boson(Boson sites, MPS ket, int site){
+
+  ket.position(site);
+  auto newket = noprime(ket(site) * op(sites, "Adag", site));
+  ket.set(site, newket);
+
+  return ket;
+
+}
