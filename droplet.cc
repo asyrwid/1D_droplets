@@ -12,14 +12,14 @@ using std::vector;
 using namespace itensor;
 using namespace std;
 
-
 int main(int argc, char** argv){
 
-double t=1;
-double U=1;
-double U_ab=1;
-int L=100;
-int maxOccupation=1;
+double t = 1;
+double U = 1;
+double U_ab = 1;
+int Natoms = 10;
+int L = 100;
+int maxOccupation = Natoms;
 
 
 int M_sites = 2*L;
@@ -38,7 +38,24 @@ auto H_potential =  toMPO(AutoMPO(sites));
 tie(H_total, H_a_t, H_aa_U, H_b_t, H_bb_U, H_ab_U, H_potential) = get_H(sites,t,U,U_ab);
 printfln("Maximum bond dimension of H is %d",maxLinkDim(H_total));
 
-      
+MPS psi0 = initial_state(sites, Natoms);
+printfln("Energy %d", innerC(psi0, H_total, psi0));
+
+printfln("density_a %d", density_a(sites, psi0, 50));
+printfln("density_b %d", density_b(sites, psi0, 10));
+
+printfln("density_density_a %d", density_density_correlation_a(sites, psi0, 49, 50));
+printfln("density_density_b %d", density_density_correlation_b(sites, psi0, 51, 55));
+
+printfln("one_body_corr_a %d", one_body_correlation_a(sites, psi0, 49, 50));
+printfln("one_body_corr_b %d", one_body_correlation_b(sites, psi0, 51, 55));
+
+printfln("pair_corr_ab %d", pair_correlation_ab(sites, psi0, 51, 55));
+
+
+
+
+
 
 
 
