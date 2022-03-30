@@ -1,7 +1,9 @@
 #include "itensor/all.h"
-//#include <math.h>
-//#include <iostream>
-//#include <fstream>
+//#include "tdvp.h"
+//#include "basisextension.h"
+#include <iostream>
+#include <fstream>
+#include <string>
 //#include <complex>
 
 using namespace itensor;
@@ -28,6 +30,8 @@ double pair_correlation_ab(Boson sites, MPS state, int i_site, int j_site);
 
 double entanglement_entropy(MPS state, int lattice_site);
 
+tuple<vector<double>, vector<double>> entropies(MPS state);
+
 tuple<vector<double>, vector<double>> particle_densities(Boson sites, MPS state);
 
 tuple<vector<vector<double>>,
@@ -35,3 +39,13 @@ tuple<vector<vector<double>>,
       vector<vector<double>>,
       vector<vector<double>>,
       vector<vector<double>>> correlations(Boson sites, MPS state);
+
+
+MPS imag_time_evol(Boson sites,
+                   MPS state,
+                   MPO Hamiltonian,
+                   std::string densities_entropies,
+                   int NoOfSteps,
+                   int nosweeps,
+                   Real dt_bysweep,
+                   int MaxBondDim);

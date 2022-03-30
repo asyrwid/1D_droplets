@@ -1,6 +1,6 @@
 #include "itensor/all.h"
-#include "tdvp.h"
-#include "basisextension.h"
+//#include "tdvp.h"
+//#include "basisextension.h"
 #include "funcs/general.h"
 #include <math.h>
 #include <iostream>
@@ -24,22 +24,46 @@ int maxOccupation = Natoms;
 
 int M_sites = 2*L;
 cout<<"M_sites = "<<M_sites<<endl;
-auto sites = Boson(M_sites,{"ConserveNb",true,"MaxOcc=",int(maxOccupation),"ConserveSz",true});
+auto sites = Boson(M_sites, {"ConserveNb", true,
+                             "MaxOcc=", int(maxOccupation),
+                             "ConserveSz", true});
 auto state = InitState(sites);
 
-auto H_total = toMPO(AutoMPO(sites));
-auto H_a_t   = toMPO(AutoMPO(sites));
-auto H_aa_U  = toMPO(AutoMPO(sites));
-auto H_b_t   = toMPO(AutoMPO(sites));
-auto H_bb_U  = toMPO(AutoMPO(sites));
-auto H_ab_U  = toMPO(AutoMPO(sites));
-auto H_potential =  toMPO(AutoMPO(sites));
 
-tie(H_total, H_a_t, H_aa_U, H_b_t, H_bb_U, H_ab_U, H_potential) = get_H(sites,t,U,U_ab);
+auto H_total = toMPO(AutoMPO(sites));
+auto H_hop_a = toMPO(AutoMPO(sites));
+auto H_hop_b = toMPO(AutoMPO(sites));
+auto H_aa = toMPO(AutoMPO(sites));
+auto H_bb = toMPO(AutoMPO(sites));
+auto H_ab = toMPO(AutoMPO(sites));
+auto H_edge = toMPO(AutoMPO(sites));
+
+tie(H_total, H_hop_a, H_hop_b, H_aa, H_bb, H_ab, H_edge) = get_H(sites,t,U,U_ab);
 printfln("Maximum bond dimension of H is %d",maxLinkDim(H_total));
 
-MPS psi0 = initial_state(sites, Natoms);
+
+auto psi0 = initial_state(sites, Natoms);
 printfln("Energy %d", innerC(psi0, H_total, psi0));
+
+
+std::string densities_entropies = "/home/asyrwid/ITensor-3.1.6/programs/1D_droplets/kurwa.txt";
+
+int NoOfSteps = 5;
+int nosweeps = 4;
+Real dt_bysweep = 0.02;
+int MaxBondDim = 200;
+
+MPS psi1 = imag_time_evol(sites, psi0, H_total, densities_entropies,
+                   NoOfSteps,
+                   nosweeps,
+                   dt_bysweep,
+                   MaxBondDim);
+psi0 = psi1;
+
+/*
+auto psi1 = imag_time_evol(sites, psi0, H_total, densities_entropies,
+  NoOfSteps, nosweeps, dt_bysweep, MaxBondDim);
+*/
 
 printfln("density_a %d", density_a(sites, psi0, 50));
 printfln("density_b %d", density_b(sites, psi0, 10));

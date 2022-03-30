@@ -1,9 +1,9 @@
-//#include "general.h"
 #include "itensor/all.h"
-//#include <math.h>
+#include "tdvp.h"
+#include "basisextension.h"
+#include <string>
 #include <iostream>
 #include <fstream>
-#include "tdvp.h"
 //#include <complex>
 
 using namespace itensor;
@@ -230,6 +230,26 @@ double entanglement_entropy(MPS state, int lattice_site){
 }
 
 
+tuple<vector<double>, vector<double>> entropies(MPS state){
+  auto M = length(state);
+  int L = M/2;
+  vector<double> entropies_a = {};
+  vector<double> entropies_b = {};
+  for(int site = 1; site <= L; site++){
+    int site_a = 2*site - 1;
+    int site_b = 2*site;
+    if((site == 1) || (site == L)){
+      entropies_a.push_back(0.);
+      entropies_b.push_back(0.);
+    }else{
+      entropies_a.push_back(entanglement_entropy(state, site_a));
+      entropies_b.push_back(entanglement_entropy(state, site_b));
+    }
+  }
+  return make_tuple(entropies_a, entropies_b);
+}
+
+
 tuple<vector<double>, vector<double>> particle_densities(Boson sites, MPS state){
   auto M = length(state);
   int L = M/2;
@@ -284,16 +304,15 @@ tuple<vector<vector<double>>,
                     density_density_b);
 }
 
-/*
+
 MPS imag_time_evol(Boson sites,
-                   int nosweeps,
-                   Real dt_bysweep,
-                   int MaxBondDim,
-                   int NoOfSteps,
                    MPS state,
                    MPO Hamiltonian,
-                   std::string PrA,
-                   std::string PrB)
+                   std::string densities_entropies,
+                   int NoOfSteps,
+                   int nosweeps,
+                   Real dt_bysweep,
+                   int MaxBondDim)
 {
   Real tstep = nosweeps*dt_bysweep; // time for one whole round of sweeps
 
@@ -309,7 +328,7 @@ MPS imag_time_evol(Boson sites,
   for(int n = 1; n <= NoOfSteps ; ++n){
     printf("\n ================= \n n = ", n);
     printf("\n time form ", (n-1)*tstep, " to ", n*tstep, "\n ================= \n");
-    if(maxLinkDim(psi1) < MaxBondDim){ // first, expand basis if the bond dimension does not exceed MaxBondDim
+    if(maxLinkDim(psi) < MaxBondDim){ // first, expand basis if the bond dimension does not exceed MaxBondDim
       cut1 = 0;
       std::vector<Real> epsilonK = {1E-10, 1E-10};
       // Play with the numbers if needed. Here, the evolution procedure is just for 'warming up' before performing DMRG
@@ -341,58 +360,36 @@ MPS imag_time_evol(Boson sites,
            }
            }
 
-    printfln("Maximum MPS bond dimension after time evolution is %d", maxLinkDim(psi1));
+    printfln("Maximum MPS bond dimension after time evolution is %d", maxLinkDim(psi));
 
     vector<double> densities_a;
     vector<double> densities_b;
+    tie(densities_a, densities_b) = particle_densities(sites, psi);
+    vector<double> entropies_a;
+    vector<double> entropies_b;
+    tie(entropies_a, entropies_b) = entropies(psi);
 
-    tie(densities_a, densities_b) = particle_densities(sites, psi)
+    // print total densities
+    double nA = 0;
+    double nB = 0;
+    for(int i = 0; i <= int(length(psi)/2)-1; i++){
+      nA += densities_a[i];
+      nB += densities_b[i];
+    }
+    printfln("nA = %.5f", nA );
+    printfln("nb = %.5f", nB );
 
+    // write densities and entropies to file
+    std::ofstream dens_entrs_open (densities_entropies);
+    std::ofstream dens_entrs (densities_entropies, std::ios::app);
+    for(int i = 0; i <= int(length(psi)/2)-1; i++){
+      dens_entrs << i+1 << " " << densities_a[i] << " " << densities_b[i] << " " << entropies_a[i] << " " << entropies_b[i] << "\n";
+    }
+    dens_entrs << "\n";
+    dens_entrs.close();
 
-          auto psi11 = psi1;
-          double nA = 0;
-          double nB = 0;
-          for(int j = 1; j <= Nsites; j++)
-            {
-              psi11.position(j);
-              auto ket = psi11.A(j);
-              auto bra = dag(prime(ket,"Site"));
-              auto opN = op(sites,"N",j);
-              auto dens = elt(bra*opN*ket);
-              if( j%2==0 ){
-                nA += dens;
-              }else{
-                nB += dens;
-              }
-            }
-          printfln("nA = %.5f", nA );
-          printfln("nb = %.5f", nB );
-
-          std::ofstream probA0 (PrA, std::ios::app);
-          std::ofstream probB0 (PrB, std::ios::app);
-
-          for(int j = 1; j <= Nsites; j++)
-            {
-              psi11.position(j);
-              auto ket = psi11.A(j);
-              auto bra = dag(prime(ket,"Site"));
-              auto opN = op(sites,"N",j);
-              auto dens = elt(bra*opN*ket);
-              if( j%2==1 ){
-                probA0 << (j+1)/2 << " " << dens << "\n";
-              }else{
-                probB0 << j/2 << " " << dens << "\n";
-              }
-            }
+  }
 
 
-            probA0 << " \n";
-            probB0 << " \n";
-            probA0.close();
-            probB0.close();
-        }
-
-return psi1;
+return psi;
 }
-
-*/
