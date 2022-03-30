@@ -52,6 +52,32 @@ printfln("one_body_corr_b %d", one_body_correlation_b(sites, psi0, 51, 55));
 
 printfln("pair_corr_ab %d", pair_correlation_ab(sites, psi0, 51, 55));
 
+printfln("entanglement_entropy %d", entanglement_entropy(psi0, 101));
+printfln("entanglement_entropy %d", entanglement_entropy(psi0, 105));
+
+vector<double> densities_a;
+vector<double> densities_b;
+vector<vector<double>> one_body_correlations_a;
+vector<vector<double>> one_body_correlations_b;
+vector<vector<double>> pair_correlations_ab;
+vector<vector<double>> density_density_a;
+vector<vector<double>> density_density_b;
+
+
+tie(densities_a, densities_b) = particle_densities(sites, psi0);
+tie(one_body_correlations_a,
+    one_body_correlations_b,
+    pair_correlations_ab,
+    density_density_a,
+    density_density_b) = correlations(sites, psi0);
+
+
+for(int i = 0; i < L; i++){
+  cout << "\nsite = " << i+1 << ";  dens_a = " << densities_a[i] << ";  dens_b = " << densities_b[i] << std::flush;
+}
+
+
+
 
 
 

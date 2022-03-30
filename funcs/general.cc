@@ -1,9 +1,10 @@
-#include "general.h"
+//#include "general.h"
 #include "itensor/all.h"
-#include <math.h>
+//#include <math.h>
 #include <iostream>
 #include <fstream>
-#include <complex>
+#include "tdvp.h"
+//#include <complex>
 
 using namespace itensor;
 using namespace std;
@@ -90,9 +91,9 @@ MPS initial_state(Boson sites, int Natoms){
   { state.set(i,"0"); }
 
   int Q = int(M_sites/2.) - Natoms;
-  for(int s = Q; s < Q + 2*Natoms;  s+=2){
-    state.set(s-1,"1");
-    state.set(s,"1");
+  for(int s = Q; s < Q + 2*Natoms;  s += 2){
+    state.set(s-1, "1");
+    state.set(s, "1");
   }
   auto psi = MPS(state);
   return psi;
@@ -206,3 +207,192 @@ double pair_correlation_ab(Boson sites, MPS state, int i_site, int j_site){
   auto a_dag_b_dag_b_a = innerC(bra, ket);
   return a_dag_b_dag_b_a.real();
 }
+
+
+double entanglement_entropy(MPS state, int lattice_site){
+  auto psi = state;
+  int bond = lattice_site;
+  psi.position(bond);
+  auto l = leftLinkIndex(psi, bond);
+  auto s = siteIndex(psi, bond);
+  auto [U,S,V] = svd(psi(bond), {l, s});
+  auto u = commonIndex(U, S);
+  double SvN = 0.;
+  for(auto n : range1(dim(u)))
+  {
+    auto Sn = elt(S, n, n);
+    auto p = sqr(Sn);
+    if(p > 1E-12){ SvN += -p*log(p); }
+  }
+  // std::cout << "\n\nS at bond: " << bond << " = " << SvN;
+  auto entanglement_entropy = SvN;
+  return entanglement_entropy;
+}
+
+
+tuple<vector<double>, vector<double>> particle_densities(Boson sites, MPS state){
+  auto M = length(state);
+  int L = M/2;
+  vector<double> densities_a = {};
+  vector<double> densities_b = {};
+  for(int site = 1; site <= L; site++){
+    densities_a.push_back(density_a(sites, state, site));
+    densities_b.push_back(density_b(sites, state, site));
+  }
+  return make_tuple(densities_a, densities_b);
+}
+
+
+tuple<vector<vector<double>>,
+      vector<vector<double>>,
+      vector<vector<double>>,
+      vector<vector<double>>,
+      vector<vector<double>>> correlations(Boson sites, MPS state){
+// Compute all the correlations
+  auto M = length(state);
+  int L = M/2;
+  vector<vector<double>> one_body_correlations_a = {};
+  vector<vector<double>> one_body_correlations_b = {};
+  vector<vector<double>> pair_correlations_ab = {};
+  vector<vector<double>> density_density_a = {};
+  vector<vector<double>> density_density_b = {};
+
+  for(int i_site = 1; i_site <= L; i_site++){
+    vector<double> row_one_corrs_a = {};
+    vector<double> row_one_corrs_b = {};
+    vector<double> row_pair_corrs_ab = {};
+    vector<double> row_density_density_a = {};
+    vector<double> row_density_density_b = {};
+
+    for(int j_site = 1; j_site <= L; j_site++){
+      row_one_corrs_a.push_back(one_body_correlation_a(sites, state, i_site, j_site));
+      row_one_corrs_b.push_back(one_body_correlation_a(sites, state, i_site, j_site));
+      row_pair_corrs_ab.push_back(pair_correlation_ab(sites, state, i_site, j_site));
+      row_density_density_a.push_back(density_density_correlation_a(sites, state, i_site, j_site));
+      row_density_density_b.push_back(density_density_correlation_b(sites, state, i_site, j_site));
+    }
+    one_body_correlations_a.push_back(row_one_corrs_a);
+    one_body_correlations_b.push_back(row_one_corrs_b);
+    pair_correlations_ab.push_back(row_pair_corrs_ab);
+    density_density_a.push_back(row_density_density_a);
+    density_density_b.push_back(row_density_density_b);
+  }
+  return make_tuple(one_body_correlations_a,
+                    one_body_correlations_b,
+                    pair_correlations_ab,
+                    density_density_a,
+                    density_density_b);
+}
+
+/*
+MPS imag_time_evol(Boson sites,
+                   int nosweeps,
+                   Real dt_bysweep,
+                   int MaxBondDim,
+                   int NoOfSteps,
+                   MPS state,
+                   MPO Hamiltonian,
+                   std::string PrA,
+                   std::string PrB)
+{
+  Real tstep = nosweeps*dt_bysweep; // time for one whole round of sweeps
+
+  auto sweepst = Sweeps(nosweeps);
+  sweepst.maxdim() = MaxBondDim;
+  sweepst.cutoff() = 1E-18;
+  sweepst.niter() = 50;
+
+  int cut0 = 0;
+  int cut1 = 0;
+  auto psi = state;
+
+  for(int n = 1; n <= NoOfSteps ; ++n){
+    printf("\n ================= \n n = ", n);
+    printf("\n time form ", (n-1)*tstep, " to ", n*tstep, "\n ================= \n");
+    if(maxLinkDim(psi1) < MaxBondDim){ // first, expand basis if the bond dimension does not exceed MaxBondDim
+      cut1 = 0;
+      std::vector<Real> epsilonK = {1E-10, 1E-10};
+      // Play with the numbers if needed. Here, the evolution procedure is just for 'warming up' before performing DMRG
+      addBasis(psi, Hamiltonian, epsilonK, {"Cutoff", 1E-10,
+                                            "Method", "DensityMatrix",
+                                            "KrylovOrd", 3,
+                                            "DoNormalize", true,
+                                            "Quiet", true});
+      }else{cut0 = 1;} // if the bond dimension is already >= MaxBondDim then change cut0 --> 1
+                       // so that the basis wont be expanded again
+      // TDVP sweep
+      if(cut0 == 0){ // evolve when the basis was expanded
+        auto energy = tdvp(psi, Hamiltonian, -dt_bysweep, sweepst, {"Truncate", false, // and do not truncate
+                                                                    "DoNormalize", true,
+                                                                    "Quiet", true,
+                                                                    "NumCenter", 1});
+      }else{
+        if(cut1 == 0){
+        auto energy = tdvp(psi, Hamiltonian, -dt_bysweep, sweepst, {"Truncate", true, // truncate in such a case
+                                                                    "DoNormalize", true,
+                                                                    "Quiet", true,
+                                                                    "NumCenter", 1});
+        cut1 = 1; // after evolution with the truncation set cut1 --> 1
+      }else{ // the case where cut1 = 1
+        auto energy = tdvp(psi, Hamiltonian, -dt_bysweep, sweepst, {"Truncate", false, // no truncation
+                                                                    "DoNormalize", true,
+                                                                    "Quiet", true,
+                                                                    "NumCenter", 1});
+           }
+           }
+
+    printfln("Maximum MPS bond dimension after time evolution is %d", maxLinkDim(psi1));
+
+    vector<double> densities_a;
+    vector<double> densities_b;
+
+    tie(densities_a, densities_b) = particle_densities(sites, psi)
+
+
+          auto psi11 = psi1;
+          double nA = 0;
+          double nB = 0;
+          for(int j = 1; j <= Nsites; j++)
+            {
+              psi11.position(j);
+              auto ket = psi11.A(j);
+              auto bra = dag(prime(ket,"Site"));
+              auto opN = op(sites,"N",j);
+              auto dens = elt(bra*opN*ket);
+              if( j%2==0 ){
+                nA += dens;
+              }else{
+                nB += dens;
+              }
+            }
+          printfln("nA = %.5f", nA );
+          printfln("nb = %.5f", nB );
+
+          std::ofstream probA0 (PrA, std::ios::app);
+          std::ofstream probB0 (PrB, std::ios::app);
+
+          for(int j = 1; j <= Nsites; j++)
+            {
+              psi11.position(j);
+              auto ket = psi11.A(j);
+              auto bra = dag(prime(ket,"Site"));
+              auto opN = op(sites,"N",j);
+              auto dens = elt(bra*opN*ket);
+              if( j%2==1 ){
+                probA0 << (j+1)/2 << " " << dens << "\n";
+              }else{
+                probB0 << j/2 << " " << dens << "\n";
+              }
+            }
+
+
+            probA0 << " \n";
+            probB0 << " \n";
+            probA0.close();
+            probB0.close();
+        }
+
+return psi1;
+}
+
+*/
