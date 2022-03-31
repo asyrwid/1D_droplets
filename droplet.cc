@@ -16,8 +16,8 @@ int main(int argc, char** argv){
 
 double t = 1;
 double U = 1;
-double U_ab = 1;
-int Natoms = 10;
+double U_ab = -0.8;
+int Natoms = 4;
 int L = 100;
 int maxOccupation = Natoms;
 
@@ -38,7 +38,7 @@ auto H_bb = toMPO(AutoMPO(sites));
 auto H_ab = toMPO(AutoMPO(sites));
 auto H_edge = toMPO(AutoMPO(sites));
 
-tie(H_total, H_hop_a, H_hop_b, H_aa, H_bb, H_ab, H_edge) = get_H(sites,t,U,U_ab);
+tie(H_total, H_hop_a, H_hop_b, H_aa, H_bb, H_ab, H_edge) = get_H(sites, t, U, U_ab);
 printfln("Maximum bond dimension of H is %d",maxLinkDim(H_total));
 
 
@@ -46,25 +46,51 @@ auto psi0 = initial_state(sites, Natoms);
 printfln("Energy %d", innerC(psi0, H_total, psi0));
 
 
-std::string densities_entropies = "/home/asyrwid/ITensor-3.1.6/programs/1D_droplets/kurwa.txt";
+std::string dir = "/home/asyrwid/ITensor-3.1.6/programs/1D_droplets/";
+
+std::string densities_entropies = dir + "densities_entropies.txt";
+std::string convergence_params = dir + "convergence_params.txt";
+std::string sites_file = dir + "sites.txt";
+std::string mps_file = dir + "mps.txt";
+vector<string> column_names_dens_entrs = {"site", "entropy_a", "entropy_b", "density_a", "density_b"};
+vector<string> column_names_conv_params = {"centr_entropy_a", "centr_entropy_b",
+                                           "E_tot", "E_hop_a", "E_hop_b", "E_aa", "E_bb", "E_ab"};
+prepare_file(column_names_dens_entrs, densities_entropies);
+prepare_file(column_names_conv_params, convergence_params);
+
 
 int NoOfSteps = 5;
 int nosweeps = 4;
 Real dt_bysweep = 0.02;
-int MaxBondDim = 200;
+int MaxBondDim_tdvp = 200;
 
-MPS psi1 = imag_time_evol(sites, psi0, H_total, densities_entropies,
-                   NoOfSteps,
-                   nosweeps,
-                   dt_bysweep,
-                   MaxBondDim);
-psi0 = psi1;
+MPS psi1 = imag_time_evol(sites,
+                          psi0,
+                          H_total,
+                          NoOfSteps,
+                          nosweeps,
+                          dt_bysweep,
+                          MaxBondDim_tdvp);
+
+
+
+vector<MPO> H_terms {H_total, H_hop_a, H_hop_b, H_aa, H_bb, H_ab};
+int MaxBondDim_dmrg = 256;
+
+dmrg_sequence(sites,
+              psi1,
+              H_terms,
+              MaxBondDim_dmrg,
+              densities_entropies,
+              convergence_params,
+              sites_file,
+              mps_file);
 
 /*
 auto psi1 = imag_time_evol(sites, psi0, H_total, densities_entropies,
   NoOfSteps, nosweeps, dt_bysweep, MaxBondDim);
 */
-
+/*
 printfln("density_a %d", density_a(sites, psi0, 50));
 printfln("density_b %d", density_b(sites, psi0, 10));
 
@@ -99,7 +125,7 @@ tie(one_body_correlations_a,
 for(int i = 0; i < L; i++){
   cout << "\nsite = " << i+1 << ";  dens_a = " << densities_a[i] << ";  dens_b = " << densities_b[i] << std::flush;
 }
-
+*/
 
 
 

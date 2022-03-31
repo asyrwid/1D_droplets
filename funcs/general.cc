@@ -305,16 +305,94 @@ tuple<vector<vector<double>>,
 }
 
 
+void prepare_file(vector<std::string> column_names, std::string path){
+  // open file and fill the first row with names of variables (column_names)
+  std::ofstream file (path);
+  int n_variables = column_names.size();
+  for(int i = 0; i < n_variables; i++){
+    file << column_names[i] << " ";
+  }file << "\n";
+  file.close();
+}
+
+
+void collect_densities_entropies(Boson sites,
+                                 MPS state,
+                                 std::string densities_entropies){
+  vector<double> densities_a;
+  vector<double> densities_b;
+  tie(densities_a, densities_b) = particle_densities(sites, state);
+  vector<double> entropies_a;
+  vector<double> entropies_b;
+  tie(entropies_a, entropies_b) = entropies(state);
+
+  // print total densities
+  double N_a = 0;
+  double N_b = 0;
+  for(int i = 0; i <= int(length(state)/2)-1; i++){
+    N_a += densities_a[i];
+    N_b += densities_b[i];
+  }
+  printfln("Na = %.5f", N_a );
+  printfln("Nb = %.5f", N_b );
+
+  // write densities and entropies to file
+  std::ofstream dens_entrs (densities_entropies, std::ios::app);
+  for(int i = 0; i <= int(length(state)/2)-1; i++){
+    int site_number = i+1;
+    dens_entrs << site_number << " ";
+    dens_entrs << densities_a[i] << " " << densities_b[i] << " ";
+    dens_entrs << entropies_a[i] << " " << entropies_b[i] << "\n";
+  }
+  dens_entrs << "\n"; // separate results obtained in consecutive steps
+  dens_entrs.close();
+}
+
+
+void collect_convergence_parameters(Boson sites,
+                                    MPS state,
+                                    vector<MPO> H_terms, // {H_total, H_hop_a, H_hop_b, H_aa, H_bb, H_ab}
+                                    std::string convergence_params){
+  int L = int(length(state)/2);
+  int central_a = L;
+  int central_b = L;
+  if(L % 2 == 0){ central_a = L - 1; }
+  else{ central_b = L + 1; }
+
+  std::ofstream conv_params (convergence_params, std::ios::app);
+
+  // entropy at central bond
+  double central_entropy_a = entanglement_entropy(state, central_a);
+  double central_entropy_b = entanglement_entropy(state, central_b);
+  conv_params << central_entropy_a << " " << central_entropy_b << " ";
+
+  //calculate energies
+  double E_total = innerC(state, H_terms[0], state).real();
+  double E_hop_a = innerC(state, H_terms[1], state).real();
+  double E_hop_b = innerC(state, H_terms[2], state).real();
+  double E_aa = innerC(state, H_terms[3], state).real();
+  double E_bb = innerC(state, H_terms[4], state).real();
+  double E_ab = innerC(state, H_terms[5], state).real();
+  conv_params << E_total << " ";
+  conv_params << E_hop_a << " ";
+  conv_params << E_hop_b << " ";
+  conv_params << E_aa << " ";
+  conv_params << E_bb << " ";
+  conv_params << E_ab << " ";
+  conv_params << "\n";
+  conv_params.close();
+}
+
+
 MPS imag_time_evol(Boson sites,
                    MPS state,
-                   MPO Hamiltonian,
-                   std::string densities_entropies,
+                   MPO H_total,
                    int NoOfSteps,
                    int nosweeps,
                    Real dt_bysweep,
                    int MaxBondDim)
 {
-  Real tstep = nosweeps*dt_bysweep; // time for one whole round of sweeps
+  Real tstep = nosweeps*dt_bysweep; // time evolved during the single round of sweeps
 
   auto sweepst = Sweeps(nosweeps);
   sweepst.maxdim() = MaxBondDim;
@@ -332,64 +410,123 @@ MPS imag_time_evol(Boson sites,
       cut1 = 0;
       std::vector<Real> epsilonK = {1E-10, 1E-10};
       // Play with the numbers if needed. Here, the evolution procedure is just for 'warming up' before performing DMRG
-      addBasis(psi, Hamiltonian, epsilonK, {"Cutoff", 1E-10,
-                                            "Method", "DensityMatrix",
-                                            "KrylovOrd", 3,
-                                            "DoNormalize", true,
-                                            "Quiet", true});
+      addBasis(psi, H_total, epsilonK, {"Cutoff", 1E-10,
+                                        "Method", "DensityMatrix",
+                                        "KrylovOrd", 3,
+                                        "DoNormalize", true,
+                                        "Quiet", true});
       }else{cut0 = 1;} // if the bond dimension is already >= MaxBondDim then change cut0 --> 1
                        // so that the basis wont be expanded again
       // TDVP sweep
       if(cut0 == 0){ // evolve when the basis was expanded
-        auto energy = tdvp(psi, Hamiltonian, -dt_bysweep, sweepst, {"Truncate", false, // and do not truncate
-                                                                    "DoNormalize", true,
-                                                                    "Quiet", true,
-                                                                    "NumCenter", 1});
+        auto energy = tdvp(psi, H_total, -dt_bysweep, sweepst, {"Truncate", false, // and do not truncate
+                                                                "DoNormalize", true,
+                                                                "Quiet", true,
+                                                                "NumCenter", 1});
       }else{
         if(cut1 == 0){
-        auto energy = tdvp(psi, Hamiltonian, -dt_bysweep, sweepst, {"Truncate", true, // truncate in such a case
-                                                                    "DoNormalize", true,
-                                                                    "Quiet", true,
-                                                                    "NumCenter", 1});
+        auto energy = tdvp(psi, H_total, -dt_bysweep, sweepst, {"Truncate", true, // truncate in such a case
+                                                                "DoNormalize", true,
+                                                                "Quiet", true,
+                                                                "NumCenter", 1});
         cut1 = 1; // after evolution with the truncation set cut1 --> 1
       }else{ // the case where cut1 = 1
-        auto energy = tdvp(psi, Hamiltonian, -dt_bysweep, sweepst, {"Truncate", false, // no truncation
-                                                                    "DoNormalize", true,
-                                                                    "Quiet", true,
-                                                                    "NumCenter", 1});
+        auto energy = tdvp(psi, H_total, -dt_bysweep, sweepst, {"Truncate", false, // no truncation
+                                                                "DoNormalize", true,
+                                                                "Quiet", true,
+                                                                "NumCenter", 1});
            }
            }
 
     printfln("Maximum MPS bond dimension after time evolution is %d", maxLinkDim(psi));
-
-    vector<double> densities_a;
-    vector<double> densities_b;
-    tie(densities_a, densities_b) = particle_densities(sites, psi);
-    vector<double> entropies_a;
-    vector<double> entropies_b;
-    tie(entropies_a, entropies_b) = entropies(psi);
-
-    // print total densities
-    double nA = 0;
-    double nB = 0;
-    for(int i = 0; i <= int(length(psi)/2)-1; i++){
-      nA += densities_a[i];
-      nB += densities_b[i];
-    }
-    printfln("nA = %.5f", nA );
-    printfln("nb = %.5f", nB );
-
-    // write densities and entropies to file
-    std::ofstream dens_entrs_open (densities_entropies);
-    std::ofstream dens_entrs (densities_entropies, std::ios::app);
-    for(int i = 0; i <= int(length(psi)/2)-1; i++){
-      dens_entrs << i+1 << " " << densities_a[i] << " " << densities_b[i] << " " << entropies_a[i] << " " << entropies_b[i] << "\n";
-    }
-    dens_entrs << "\n";
-    dens_entrs.close();
-
   }
 
+  return psi;
+}
 
-return psi;
+
+void dmrg_sequence(Boson sites,
+                   MPS state,
+                   vector<MPO> H_terms, // {H_total, H_hop_a, H_hop_b, H_aa, H_bb, H_ab}
+                   int MaxBondDim,
+                   std::string densities_entropies,
+                   std::string convergence_params,
+                   std::string sites_file,
+                   std::string mps_file){
+
+  MPO H_total = H_terms[0];
+
+  int dim = 64;
+  vector<int> BondDim_truncation = {};
+  while(dim < 0.75*MaxBondDim){
+    BondDim_truncation.push_back(dim);
+    dim = 2*dim;
+  }
+  BondDim_truncation.push_back(MaxBondDim);
+
+  // Initial DMRG sweeps
+  auto psi = state;
+  for(int n = 0; n < BondDim_truncation.size(); n++){
+    int nswep = 4;
+    auto sweeps = Sweeps(nswep);
+    sweeps.maxdim() = BondDim_truncation[n];
+    sweeps.cutoff() = 1E-16;
+    for(int m = 0; m < 10; m++){
+      std::cout << "\n ======= step " << m+1 << "   truncation = " << BondDim_truncation[n] << "\n";
+      auto [energy0, psi0] = dmrg(H_total, psi, sweeps, {"Quiet",true});
+      psi = psi0;
+    }
+    // collect densities and entropies
+    collect_densities_entropies(sites, psi, densities_entropies);
+    // collect convergence_parameters
+    collect_convergence_parameters(sites, psi, H_terms, convergence_params);
+  }
+
+  // calculate entropies at central bonds
+  int L = int(length(state)/2);
+  int central_a = L;
+  int central_b = L;
+  if(L % 2 == 0){ central_a = L - 1; }
+  else{ central_b = L + 1; }
+  double central_entropy_a = entanglement_entropy(state, central_a);
+  double central_entropy_b = entanglement_entropy(state, central_b);
+  double postdmrg_central_entropy_a = 0.1*central_entropy_a; // initialization
+  double postdmrg_central_entropy_b = 0.1*central_entropy_b; // initialization
+  double relative_diff_a = fabs(central_entropy_a - postdmrg_central_entropy_a)/central_entropy_a;
+  double relative_diff_b = fabs(central_entropy_b - postdmrg_central_entropy_b)/central_entropy_b;
+
+
+  while((relative_diff_a > 0.00025) || (relative_diff_b > 0.00025)){
+    int nswep = 4;
+    auto sweeps = Sweeps(nswep);
+    sweeps.maxdim() = MaxBondDim;
+    sweeps.cutoff() = 1E-16;
+    for(int m = 0; m < 10; m++){
+      std::cout << "\n ======= step " << m+1 << "   max truncation = " << MaxBondDim << "\n";
+      auto [energy0, psi0] = dmrg(H_total, psi, sweeps, {"Quiet",true});
+      psi = psi0;
+    }
+    // collect densities and entropies
+    collect_densities_entropies(sites, psi, densities_entropies);
+    // collect convergence_parameters
+    collect_convergence_parameters(sites, psi, H_terms, convergence_params);
+
+    // save sites and mps`
+    writeToFile(sites_file, sites);
+    writeToFile(mps_file, psi);
+
+    // recalculate entropy difference
+    central_entropy_a = postdmrg_central_entropy_a;
+    central_entropy_b = postdmrg_central_entropy_b;
+
+    postdmrg_central_entropy_a = entanglement_entropy(state, central_a);
+    postdmrg_central_entropy_b = entanglement_entropy(state, central_b);
+
+    relative_diff_a = fabs(central_entropy_a - postdmrg_central_entropy_a)/central_entropy_a;
+    relative_diff_b = fabs(central_entropy_b - postdmrg_central_entropy_b)/central_entropy_b;
+  }
+
+  printfln("Ground State Found!");
+
+
 }
