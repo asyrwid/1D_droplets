@@ -43,6 +43,8 @@ tuple<vector<vector<double>>,
       vector<vector<double>>,
       vector<vector<double>>> correlations(Boson sites, MPS state);
 
+void save_correlations(Boson sites, MPS state, string path);
+
 void prepare_file(vector<string> column_names, std::string path);
 
 void collect_densities_entropies(Boson sites,
@@ -62,11 +64,11 @@ MPS imag_time_evol(Boson sites,
                    Real dt_bysweep = 0.02,
                    int MaxBondDim = 200);
 
-void dmrg_sequence(Boson sites,
-                   MPS state,
-                   vector<MPO> H_terms, // {H_total, H_hop_a, H_hop_b, H_aa, H_bb, H_ab}
-                   int MaxBondDim,
-                   std::string densities_entropies,
-                   std::string convergence_params,
-                   std::string sites_file,
-                   std::string mps_file);
+MPS dmrg_sequence(Boson sites,
+                  MPS state,
+                  vector<MPO> H_terms, // {H_total, H_hop_a, H_hop_b, H_aa, H_bb, H_ab}
+                  int MaxBondDim,
+                  std::string densities_entropies,
+                  std::string convergence_params,
+                  std::string sites_file,
+                  std::string mps_file);

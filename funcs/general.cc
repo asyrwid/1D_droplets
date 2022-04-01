@@ -108,18 +108,18 @@ string parameters_to_filename(int Natoms,
                               double r,
                               int MaxBondDim){
 
-string str_Natoms = "_Natoms=" + str(Natoms);
-string str_L = "_L=" + str(L);
-string str_maxOccupation = "_MaxOcc=" + str(maxOccupation);
-string str_MaxBondDim = "_MaxBondDim=" + str(MaxBondDim);
+string str_Natoms = "#Natoms_" + str(Natoms);
+string str_L = "#L_" + str(L);
+string str_maxOccupation = "#MaxOcc_" + str(maxOccupation);
+string str_MaxBondDim = "#MaxBondDim_" + str(MaxBondDim);
 
 double t1, t2, U1, U2;
 t2 = std::modf(t, &t1);
 U2 = std::modf(U, &U1);
-string str_t = "_t=" + str(t1) + "_" + str( floor(fabs(t2)*1000) );
-string str_U = "_U=" + str(U1) + "_" + str( floor(fabs(U2)*1000) );
+string str_t = "#t_" + str(t1) + "_" + str( floor(fabs(t2)*1000) );
+string str_U = "#U_" + str(U1) + "_" + str( floor(fabs(U2)*1000) );
 
-string str_r = "_r=0_"; // we consider |r| < 1
+string str_r = "#r_0_"; // we consider |r| < 1
 if(r*1000<100){ str_r = str_r + "0" + str(r*1000); }
 else{ str_r = str_r + str(r*1000); }
 
@@ -288,6 +288,7 @@ tuple<vector<vector<double>>,
   vector<vector<double>> density_density_a = {};
   vector<vector<double>> density_density_b = {};
 
+  cout << "\ncalculate correlations:";
   for(int i_site = 1; i_site <= L; i_site++){
     vector<double> row_one_corrs_a = {};
     vector<double> row_one_corrs_b = {};
@@ -301,7 +302,8 @@ tuple<vector<vector<double>>,
       row_pair_corrs_ab.push_back(pair_correlation_ab(sites, state, i_site, j_site));
       row_density_density_a.push_back(density_density_correlation_a(sites, state, i_site, j_site));
       row_density_density_b.push_back(density_density_correlation_b(sites, state, i_site, j_site));
-    }
+    }cout << "\n" << round(i_site*100./L) << "%" << std::flush;
+
     one_body_correlations_a.push_back(row_one_corrs_a);
     one_body_correlations_b.push_back(row_one_corrs_b);
     pair_correlations_ab.push_back(row_pair_corrs_ab);
@@ -313,6 +315,45 @@ tuple<vector<vector<double>>,
                     pair_correlations_ab,
                     density_density_a,
                     density_density_b);
+}
+
+
+void save_correlations(Boson sites, MPS state, string path){
+
+  vector<vector<double>> one_body_correlations_a;
+  vector<vector<double>> one_body_correlations_b;
+  vector<vector<double>> pair_correlations_ab;
+  vector<vector<double>> density_density_a;
+  vector<vector<double>> density_density_b;
+
+  tie(one_body_correlations_a,
+      one_body_correlations_b,
+      pair_correlations_ab,
+      density_density_a,
+      density_density_b) = correlations(sites, state);
+
+  int n_rows = one_body_correlations_a.size();
+  int n_cols = n_rows;
+  std::ofstream file (path);
+  // set labels
+  file << "row" << " " << "col" << " ";
+  file << "one_body_correlations_a" << " ";
+  file << "one_body_correlations_b" << " ";
+  file << "pair_correlations_ab" << " ";
+  file << "density_density_a" << " ";
+  file << "density_density_a" << "\n";
+
+  for(int row = 0; row < n_rows; row++){
+    for(int col = 0; col < n_cols; col++){
+      file << row+1 << " " << col+1 << " ";
+      file << one_body_correlations_a[row][col] << " ";
+      file << one_body_correlations_b[row][col] << " ";
+      file << pair_correlations_ab[row][col] << " ";
+      file << density_density_a[row][col] << " ";
+      file << density_density_b[row][col] << "\n";
+    }
+  }
+  file.close();
 }
 
 
@@ -456,14 +497,14 @@ MPS imag_time_evol(Boson sites,
 }
 
 
-void dmrg_sequence(Boson sites,
-                   MPS state,
-                   vector<MPO> H_terms, // {H_total, H_hop_a, H_hop_b, H_aa, H_bb, H_ab}
-                   int MaxBondDim,
-                   std::string densities_entropies,
-                   std::string convergence_params,
-                   std::string sites_file,
-                   std::string mps_file){
+MPS dmrg_sequence(Boson sites,
+                  MPS state,
+                  vector<MPO> H_terms, // {H_total, H_hop_a, H_hop_b, H_aa, H_bb, H_ab}
+                  int MaxBondDim,
+                  std::string densities_entropies,
+                  std::string convergence_params,
+                  std::string sites_file,
+                  std::string mps_file){
 
   MPO H_total = H_terms[0];
 
@@ -474,10 +515,11 @@ void dmrg_sequence(Boson sites,
     dim = 2*dim;
   }
   BondDim_truncation.push_back(MaxBondDim);
+  int size = BondDim_truncation.size();
 
   // Initial DMRG sweeps
   auto psi = state;
-  for(int n = 0; n < BondDim_truncation.size(); n++){
+  for(int n = 0; n < size; n++){
     int nswep = 4;
     auto sweeps = Sweeps(nswep);
     sweeps.maxdim() = BondDim_truncation[n];
@@ -539,5 +581,5 @@ void dmrg_sequence(Boson sites,
 
   printfln("Ground State Found!");
 
-
+return psi;
 }
