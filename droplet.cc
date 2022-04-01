@@ -1,5 +1,7 @@
 #include "itensor/all.h"
-#include "funcs/general.h"
+#include "utils/general.h"
+#include "utils/correlations.h"
+#include "utils/tdvp_dmrg.h"
 #include <math.h>
 #include <iostream>
 #include <string>

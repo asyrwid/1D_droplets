@@ -15,12 +15,12 @@ APP=droplet
 
 # 4. Add any headers your program depends on here. The make program
 #    will auto-detect if these headers have changed and recompile your app.
-HEADERS=$(TDVP_DIR)/tdvp.h funcs/general.h
+HEADERS=$(TDVP_DIR)/tdvp.h utils/general.h utils/correlations.h utils/tdvp_dmrg.h
 
 
 # 5. For any additional .cc (source) files making up your project,
 #    add their full filenames here.
-CCFILES=$(APP).cc funcs/general.cc
+CCFILES=$(APP).cc utils/general.cc utils/correlations.cc utils/tdvp_dmrg.cc
 
 
 #################################################################
