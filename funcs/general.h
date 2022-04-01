@@ -1,10 +1,7 @@
 #include "itensor/all.h"
-//#include "tdvp.h"
-//#include "basisextension.h"
 #include <iostream>
 #include <fstream>
 #include <string>
-//#include <complex>
 
 using namespace itensor;
 using namespace std;
@@ -13,8 +10,14 @@ tuple<MPO, MPO, MPO, MPO, MPO, MPO, MPO> get_H(SiteSet& sites,  double t, double
 
 MPS initial_state(Boson sites, int Natoms);
 
-MPS annihilate_boson(MPS ket, int site);
-MPS create_boson(Boson sites, MPS ket, int site);
+string parameters_to_filename(int Natoms,
+                              int L,
+                              int maxOccupation,
+                              double t,
+                              double U,
+                              double r,
+                              int MaxBondDim);
+
 MPS apply_operator(Boson sites, string OpName, MPS ket, int site);
 
 double density_a(Boson sites, MPS state, int site);
@@ -54,10 +57,10 @@ void collect_convergence_parameters(Boson sites,
 MPS imag_time_evol(Boson sites,
                    MPS state,
                    MPO Hamiltonian,
-                   int NoOfSteps,
-                   int nosweeps,
-                   Real dt_bysweep,
-                   int MaxBondDim);
+                   int NoOfSteps = 5,
+                   int nosweeps = 4,
+                   Real dt_bysweep = 0.02,
+                   int MaxBondDim = 200);
 
 void dmrg_sequence(Boson sites,
                    MPS state,

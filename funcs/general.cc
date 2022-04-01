@@ -100,19 +100,30 @@ MPS initial_state(Boson sites, int Natoms){
 }
 
 
-MPS annihilate_boson(Boson sites, MPS ket, int site){
-  ket.position(site);
-  auto newket = noPrime(ket(site) * op(sites, "A", site));
-  ket.set(site, newket);
-  return ket;
-}
+string parameters_to_filename(int Natoms,
+                              int L,
+                              int maxOccupation,
+                              double t,
+                              double U,
+                              double r,
+                              int MaxBondDim){
 
+string str_Natoms = "_Natoms=" + str(Natoms);
+string str_L = "_L=" + str(L);
+string str_maxOccupation = "_MaxOcc=" + str(maxOccupation);
+string str_MaxBondDim = "_MaxBondDim=" + str(MaxBondDim);
 
-MPS create_boson(Boson sites, MPS ket, int site){
-  ket.position(site);
-  auto newket = noPrime(ket(site) * op(sites, "Adag", site));
-  ket.set(site, newket);
-  return ket;
+double t1, t2, U1, U2;
+t2 = std::modf(t, &t1);
+U2 = std::modf(U, &U1);
+string str_t = "_t=" + str(t1) + "_" + str( floor(fabs(t2)*1000) );
+string str_U = "_U=" + str(U1) + "_" + str( floor(fabs(U2)*1000) );
+
+string str_r = "_r=0_"; // we consider |r| < 1
+if(r*1000<100){ str_r = str_r + "0" + str(r*1000); }
+else{ str_r = str_r + str(r*1000); }
+
+return str_Natoms + str_L + str_t + str_U + str_r + str_maxOccupation + str_MaxBondDim + ".txt";
 }
 
 
@@ -496,7 +507,7 @@ void dmrg_sequence(Boson sites,
   double relative_diff_b = fabs(central_entropy_b - postdmrg_central_entropy_b)/central_entropy_b;
 
 
-  while((relative_diff_a > 0.00025) || (relative_diff_b > 0.00025)){
+  while((relative_diff_a > 0.001) || (relative_diff_b > 0.001)){
     int nswep = 4;
     auto sweeps = Sweeps(nswep);
     sweeps.maxdim() = MaxBondDim;
