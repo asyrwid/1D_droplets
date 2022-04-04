@@ -12,16 +12,23 @@ using namespace std;
 
 int main(int argc, char** argv){
 
-int Natoms = 2;
-int L = 50;
-int maxOccupation = Natoms;
-double t = 1;
-double U = 5;
-double r = 0.1;
-double U_ab = -U*(1-r);
-int MaxBondDim = 256;
+//if(argc > 1){
 
-string dir = "/home/asyrwid/ITensor-3.1.6/programs/1D_droplets/data/";
+int Natoms = atoi(argv[1]);
+int L = atoi(argv[2]);
+int maxOccupation = atoi(argv[3]);
+double t = atof(argv[4]);
+double U = atof(argv[5]);
+double r = atof(argv[6]);
+double U_ab = -U*(1-r);
+int MaxBondDim = atoi(argv[7]);
+string dir = argv[8];//"/home/asyrwid/ITensor-3.1.6/programs/1D_droplets/data/";
+
+//}
+
+
+
+
 string parameters = parameters_to_filename(Natoms, L, maxOccupation, t, U, r, MaxBondDim);
 
 int M_sites = 2*L; // at each physical bond we have 2 sites where even and odd ones

@@ -81,33 +81,31 @@ tuple<vector<vector<double>>,
 // Compute all the correlations
   auto M = length(state);
   int L = M/2;
-  vector<vector<double>> one_body_correlations_a = {};
-  vector<vector<double>> one_body_correlations_b = {};
-  vector<vector<double>> pair_correlations_ab = {};
-  vector<vector<double>> density_density_a = {};
-  vector<vector<double>> density_density_b = {};
+  vector<vector<double>> one_body_correlations_a(L, vector<double>(L));
+  vector<vector<double>> one_body_correlations_b(L, vector<double>(L));
+  vector<vector<double>> pair_correlations_ab(L, vector<double>(L));
+  vector<vector<double>> density_density_a(L, vector<double>(L));
+  vector<vector<double>> density_density_b(L, vector<double>(L));
 
   cout << "\ncalculate correlations:";
   for(int i_site = 1; i_site <= L; i_site++){
-    vector<double> row_one_corrs_a = {};
-    vector<double> row_one_corrs_b = {};
-    vector<double> row_pair_corrs_ab = {};
-    vector<double> row_density_density_a = {};
-    vector<double> row_density_density_b = {};
-
     for(int j_site = 1; j_site <= L; j_site++){
-      row_one_corrs_a.push_back(one_body_correlation_a(sites, state, i_site, j_site));
-      row_one_corrs_b.push_back(one_body_correlation_b(sites, state, i_site, j_site));
-      row_pair_corrs_ab.push_back(pair_correlation_ab(sites, state, i_site, j_site));
-      row_density_density_a.push_back(density_density_correlation_a(sites, state, i_site, j_site));
-      row_density_density_b.push_back(density_density_correlation_b(sites, state, i_site, j_site));
-    }cout << "\n" << round(i_site*100./L) << "%" << std::flush;
+      double adagi_aj = one_body_correlation_a(sites, state, i_site, j_site);
+      double bdagi_bj = one_body_correlation_b(sites, state, i_site, j_site);
+      double ai_bi_bdagj_adagj = pair_correlation_ab(sites, state, i_site, j_site);
+      double nai_naj = density_density_correlation_a(sites, state, i_site, j_site);
+      double nbi_nbj = density_density_correlation_b(sites, state, i_site, j_site);
+      double nai = density_a(sites, state, i_site);
+      double naj = density_a(sites, state, j_site);
+      double nbi = density_b(sites, state, i_site);
+      double nbj = density_b(sites, state, j_site);
 
-    one_body_correlations_a.push_back(row_one_corrs_a);
-    one_body_correlations_b.push_back(row_one_corrs_b);
-    pair_correlations_ab.push_back(row_pair_corrs_ab);
-    density_density_a.push_back(row_density_density_a);
-    density_density_b.push_back(row_density_density_b);
+      one_body_correlations_a[i_site-1][j_site-1] = adagi_aj;
+      one_body_correlations_b[i_site-1][j_site-1] = bdagi_bj;
+      pair_correlations_ab[i_site-1][j_site-1] = ai_bi_bdagj_adagj - adagi_aj*bdagi_bj;
+      density_density_a[i_site-1][j_site-1] = nai_naj - nai*naj;
+      density_density_b[i_site-1][j_site-1] = nbi_nbj - nbi*nbj;
+    }cout << "\n" << round(i_site*100./L) << "%" << std::flush;
   }
   return make_tuple(one_body_correlations_a,
                     one_body_correlations_b,

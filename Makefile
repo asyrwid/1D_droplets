@@ -69,5 +69,5 @@ mkdebugdir:
 	mkdir -p .debug_objs
 
 run: droplet
-		./droplet >out
+		./droplet #>out
 

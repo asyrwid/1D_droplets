@@ -177,17 +177,17 @@ double entanglement_entropy(MPS state, int lattice_site){
 tuple<vector<double>, vector<double>> entropies(MPS state){
   auto M = length(state);
   int L = M/2;
-  vector<double> entropies_a = {};
-  vector<double> entropies_b = {};
+  vector<double> entropies_a(L);
+  vector<double> entropies_b(L);
   for(int site = 1; site <= L; site++){
     int site_a = 2*site - 1;
     int site_b = 2*site;
     if((site == 1) || (site == L)){
-      entropies_a.push_back(0.);
-      entropies_b.push_back(0.);
+      entropies_a[site-1] = 0.;
+      entropies_b[site-1] = 0.;
     }else{
-      entropies_a.push_back(entanglement_entropy(state, site_a));
-      entropies_b.push_back(entanglement_entropy(state, site_b));
+      entropies_a[site-1] = entanglement_entropy(state, site_a);
+      entropies_b[site-1] = entanglement_entropy(state, site_b);
     }
   }
   return make_tuple(entropies_a, entropies_b);
@@ -197,11 +197,11 @@ tuple<vector<double>, vector<double>> entropies(MPS state){
 tuple<vector<double>, vector<double>> particle_densities(Boson sites, MPS state){
   auto M = length(state);
   int L = M/2;
-  vector<double> densities_a = {};
-  vector<double> densities_b = {};
+  vector<double> densities_a(L);
+  vector<double> densities_b(L);
   for(int site = 1; site <= L; site++){
-    densities_a.push_back(density_a(sites, state, site));
-    densities_b.push_back(density_b(sites, state, site));
+    densities_a[site-1] = density_a(sites, state, site);
+    densities_b[site-1] = density_b(sites, state, site);
   }
   return make_tuple(densities_a, densities_b);
 }
