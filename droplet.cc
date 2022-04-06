@@ -12,8 +12,6 @@ using namespace std;
 
 int main(int argc, char** argv){
 
-//if(argc > 1){
-
 int Natoms = atoi(argv[1]);
 int L = atoi(argv[2]);
 int maxOccupation = atoi(argv[3]);
@@ -22,12 +20,7 @@ double U = atof(argv[5]);
 double r = atof(argv[6]);
 double U_ab = -U*(1-r);
 int MaxBondDim = atoi(argv[7]);
-string dir = argv[8];//"/home/asyrwid/ITensor-3.1.6/programs/1D_droplets/data/";
-
-//}
-
-
-
+string dir = argv[8];
 
 string parameters = parameters_to_filename(Natoms, L, maxOccupation, t, U, r, MaxBondDim);
 
@@ -53,14 +46,21 @@ printfln("Energy %d", innerC(psi0, H_total, psi0));
 
 string densities_entropies = dir + "densities_entropies_" + parameters;
 string convergence_params = dir + "convergence_params_" + parameters;
+string scalars = dir + "scalars_" + parameters;
+
 string sites_file = dir + "sites_" + parameters;
 string mps_file = dir + "mps_" + parameters;
 string corrs = dir + "correlations_" + parameters;
-vector<string> column_names_dens_entrs = {"site", "entropy_a", "entropy_b", "density_a", "density_b"};
-vector<string> column_names_conv_params = {"centr_entropy_a", "centr_entropy_b",
-                                           "E_tot", "E_hop_a", "E_hop_b", "E_aa", "E_bb", "E_ab"};
+string fourier_transforms = dir + "fourier_transforms_" + parameters;
+
+vector<string> column_names_dens_entrs = {"# site", "entropy_a", "entropy_b", "density_a", "density_b"};
+vector<string> column_names_conv_params = {"# centr_entropy_a", "centr_entropy_b",
+                                           "# E_tot", "E_hop_a", "E_hop_b", "E_aa", "E_bb", "E_ab"};
+vector<string> column_names_scalars = {"# h_a", "h_b", "h_ab", "f_SF"};
+
 prepare_file(column_names_dens_entrs, densities_entropies);
 prepare_file(column_names_conv_params, convergence_params);
+prepare_file(column_names_scalars, scalars );
 
 // Warm up with a few steps of imaginary time evolution;
 MPS psi1 = imag_time_evol(sites, psi0, H_total);
@@ -70,7 +70,7 @@ auto psi_GS =dmrg_sequence(sites, psi1, H_terms, MaxBondDim, // DMRG
                            densities_entropies, convergence_params, sites_file, mps_file // file paths
                           );
 
-save_correlations(sites, psi_GS, corrs);
+save_correlations(sites, psi_GS, corrs, fourier_transforms, scalars);
 
 return 0;
 }

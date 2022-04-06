@@ -115,7 +115,29 @@ tuple<vector<vector<double>>,
 }
 
 
-void save_correlations(Boson sites, MPS state, string path){
+vector<complex<double>> get_fourier_transform(vector<vector<double>> A){
+
+  int L = A.size();
+
+  vector<complex<double>> A_fourier_transform(L, 0);
+  double pi = 3.14159265359;
+  for (int k_int = 0; k_int < L; k_int++){
+      double k = k_int*2.0*pi/L;
+      for(int i = 0; i < L; i++){
+          for(int j = 0; j < L; j++){
+              A_fourier_transform[k_int] = A_fourier_transform[k_int] + exp(Cplx_i*k*(i-j))*A[i][j]/L/L;
+          }
+      }
+  }
+
+  return A_fourier_transform;
+}
+
+
+void save_correlations(Boson sites, MPS state, 
+					   string path_correlations, 
+					   string path_fourier_transforms, 
+					   string path_scalars){
 
   vector<vector<double>> one_body_correlations_a;
   vector<vector<double>> one_body_correlations_b;
@@ -131,24 +153,80 @@ void save_correlations(Boson sites, MPS state, string path){
 
   int n_rows = one_body_correlations_a.size();
   int n_cols = n_rows;
-  std::ofstream file (path);
+  std::ofstream file_correlations (path_correlations);
   // set labels
-  file << "row" << " " << "col" << " ";
-  file << "one_body_correlations_a" << " ";
-  file << "one_body_correlations_b" << " ";
-  file << "pair_correlations_ab" << " ";
-  file << "density_density_a" << " ";
-  file << "density_density_a" << "\n";
+  file_correlations << "# row" << " " << "col" << " ";
+  file_correlations << "one_body_correlations_a" << " ";
+  file_correlations << "one_body_correlations_b" << " ";
+  file_correlations << "pair_correlations_ab" << " ";
+  file_correlations << "density_density_a" << " ";
+  file_correlations << "density_density_a" << "\n";
 
   for(int row = 0; row < n_rows; row++){
     for(int col = 0; col < n_cols; col++){
-      file << row+1 << " " << col+1 << " ";
-      file << one_body_correlations_a[row][col] << " ";
-      file << one_body_correlations_b[row][col] << " ";
-      file << pair_correlations_ab[row][col] << " ";
-      file << density_density_a[row][col] << " ";
-      file << density_density_b[row][col] << "\n";
+      file_correlations << row+1 << " " << col+1 << " ";
+      file_correlations << one_body_correlations_a[row][col] << " ";
+      file_correlations << one_body_correlations_b[row][col] << " ";
+      file_correlations << pair_correlations_ab[row][col] << " ";
+      file_correlations << density_density_a[row][col] << " ";
+      file_correlations << density_density_b[row][col] << "\n";
+    }
+    file_correlations<<"\n";
+  }
+  file_correlations.close();
+
+  // Get scalars
+  int L = n_rows;
+  double h_a = 0;
+  double h_b = 0;
+  double h_ab = 0;
+  double f_SF_a = 0;
+  double f_SF_b = 0;
+  double N_a = 0;
+  double N_b = 0;
+  for(int i_site = 1; i_site <= L; i_site++){
+    for(int j_site = 1; j_site <= L; j_site++){
+      if(j_site != L/2){
+        h_a = h_a + one_body_correlations_a[i_site-1][j_site-1];
+        h_b = h_b + one_body_correlations_b[i_site-1][j_site-1];
+        h_ab = h_ab + pair_correlations_ab[i_site-1][j_site-1];
+      }
+        f_SF_a = f_SF_a + one_body_correlations_a[i_site-1][j_site-1];
+        f_SF_b = f_SF_b + one_body_correlations_b[i_site-1][j_site-1];
+        if(i_site == j_site){
+          N_a = N_a + one_body_correlations_a[i_site-1][j_site-1];
+          N_b = N_b + one_body_correlations_a[i_site-1][j_site-1];
+        }
     }
   }
-  file.close();
+  f_SF_a = f_SF_a/(L*N_a);
+  f_SF_b = f_SF_b/(L*N_b);
+  h_a = h_a/(L*N_a);
+  h_b = h_b/(L*N_b);
+  h_ab = h_b/L/(N_a*N_b);
+
+  cout << "N_a = "<< N_a << endl;
+  cout << "N_b = "<< N_b << endl;
+  //
+
+  std::ofstream file_scalars (path_scalars);
+  file_scalars << "# f_SF_a f_SF_b h_a h_b h_ab\n";
+  file_scalars << f_SF_a << " " << f_SF_b << " " << h_a << " " << h_b << " " << h_ab << endl;
+  file_scalars.close();
+
+  // Get Fourier transforms
+  vector<complex<double>> S_fourier;
+  vector<complex<double>> R_fourier;
+  vector<complex<double>> Q_fourier;
+
+  S_fourier = get_fourier_transform(density_density_a);
+  R_fourier = get_fourier_transform(one_body_correlations_a);
+  Q_fourier = get_fourier_transform(pair_correlations_ab);
+
+  std::ofstream file_fourier_transforms(path_fourier_transforms);
+  file_fourier_transforms<<"# S R Q \n";
+  for(int k_i = 0; k_i < L; k_i++){
+    file_fourier_transforms << k_i << " " << S_fourier[k_i].real() << " " << R_fourier[k_i].real() << " " << Q_fourier[k_i].real() << endl;
+  }
+  file_fourier_transforms.close();
 }

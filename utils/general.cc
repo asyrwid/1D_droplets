@@ -42,18 +42,6 @@ tuple<MPO, MPO, MPO, MPO, MPO, MPO, MPO> get_H(SiteSet& sites,
   auto H_aa = toMPO(interaction_aa);
   auto H_bb = toMPO(interaction_bb);
 
-/* REDUNDANT !!!
-  if(PBC == 1){
-    int j_site_boson_a = 2*L - 1;
-    int j_site_boson_b = 2*L;
-    tmp_H_a_t += -t, "Adag", j_site_boson_a, "A", 1;
-    tmp_H_a_t += -t, "Adag", 1, "A", j_site_boson_a;
-
-    tmp_H_b_t += -t,"Adag", j_site_boson_b, "A", 2;
-    tmp_H_b_t += -t,"Adag", 2, "A", j_site_boson_b;
-  }
-*/
-
   // inter-component interactions
   auto interaction_ab = AutoMPO(sites);
   for (int j_site = 1; j_site <= L; j_site++){
@@ -98,6 +86,13 @@ MPS initial_state(Boson sites, int Natoms){
 }
 
 
+string get_string_filename(double g){
+	char g_str_format[40];
+  sprintf(g_str_format,"%04.2f",g);
+	return g_str_format;
+}
+
+
 string parameters_to_filename(int Natoms,
                               int L,
                               int maxOccupation,
@@ -106,22 +101,16 @@ string parameters_to_filename(int Natoms,
                               double r,
                               int MaxBondDim){
 
-string str_Natoms = "#Natoms_" + str(Natoms);
-string str_L = "#L_" + str(L);
-string str_maxOccupation = "#MaxOcc_" + str(maxOccupation);
-string str_MaxBondDim = "#MaxBondDim_" + str(MaxBondDim);
+  string str_Natoms = "Natoms." + str(Natoms);
+  string str_L = "_L." + str(L);
+  string str_maxOccupation = "_MaxOcc." + str(maxOccupation);
+  string str_MaxBondDim = "_MaxBondDim." + str(MaxBondDim);
 
-double t1, t2, U1, U2;
-t2 = std::modf(t, &t1);
-U2 = std::modf(U, &U1);
-string str_t = "#t_" + str(t1) + "_" + str( floor(fabs(t2)*1000) );
-string str_U = "#U_" + str(U1) + "_" + str( floor(fabs(U2)*1000) );
+  string str_t = "_t." + get_string_filename(t);
+  string str_U = "_U." + get_string_filename(U);
+  string str_r = "_r." + get_string_filename(r);
 
-string str_r = "#r_0_"; // we consider |r| < 1
-if(r*1000<100){ str_r = str_r + "0" + str(r*1000); }
-else{ str_r = str_r + str(r*1000); }
-
-return str_Natoms + str_L + str_t + str_U + str_r + str_maxOccupation + str_MaxBondDim + ".txt";
+  return str_Natoms + str_L + str_t + str_U + str_r + str_maxOccupation + str_MaxBondDim + ".txt";
 }
 
 

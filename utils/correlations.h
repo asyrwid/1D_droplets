@@ -21,4 +21,10 @@ tuple<vector<vector<double>>,
       vector<vector<double>>,
       vector<vector<double>>> correlations(Boson sites, MPS state);
 
-void save_correlations(Boson sites, MPS state, string path);
+vector<complex<double>> get_fourier_transform(vector<vector<double>> A);;
+
+void save_correlations(Boson sites,
+                       MPS state,
+                       string path_1,
+                       string path_2,
+                       string path_3);

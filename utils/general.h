@@ -40,3 +40,5 @@ void collect_convergence_parameters(Boson sites,
                                     MPS state,
                                     vector<MPO> H_terms, // {H_total, H_hop_a, H_hop_b, H_aa, H_bb, H_ab}
                                     std::string convergence_params);
+
+string get_string_filename(double g);
