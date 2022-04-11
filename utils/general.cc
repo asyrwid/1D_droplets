@@ -54,10 +54,11 @@ tuple<MPO, MPO, MPO, MPO, MPO, MPO, MPO> get_H(SiteSet& sites,
   // Hard wall at the edges choose value different than 0 if you want to
   // have additional potential at the first and last sites in the system.
   auto edge_potential = AutoMPO(sites);
-  edge_potential += 0, "N", 1;
-  edge_potential += 0, "N", M_sites-1;
-  edge_potential += 0, "N", 2;
-  edge_potential += 0, "N", M_sites;
+  double wall = 1000;
+  edge_potential += wall, "N", 1;
+  edge_potential += wall, "N", M_sites-1;
+  edge_potential += wall, "N", 2;
+  edge_potential += wall, "N", M_sites;
   auto H_edge = toMPO(edge_potential);
 
   auto H_a = sum(H_hop_a, H_aa);
@@ -88,7 +89,7 @@ MPS initial_state(Boson sites, int Natoms){
 
 string get_string_filename(double g){
 	char g_str_format[40];
-  sprintf(g_str_format,"%04.2f",g);
+  sprintf(g_str_format,"%05.3f",g);
 	return g_str_format;
 }
 

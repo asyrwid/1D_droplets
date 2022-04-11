@@ -115,14 +115,14 @@ MPS dmrg_sequence(Boson sites,
   int central_b = L;
   if(L % 2 == 0){ central_a = L - 1; }
   else{ central_b = L + 1; }
-  double central_entropy_a = entanglement_entropy(state, central_a);
-  double central_entropy_b = entanglement_entropy(state, central_b);
+  double central_entropy_a = entanglement_entropy(psi, central_a);
+  double central_entropy_b = entanglement_entropy(psi, central_b);
   double postdmrg_central_entropy_a = 0.1*central_entropy_a; // initialization
   double postdmrg_central_entropy_b = 0.1*central_entropy_b; // initialization
   double relative_diff_a = fabs(central_entropy_a - postdmrg_central_entropy_a)/central_entropy_a;
   double relative_diff_b = fabs(central_entropy_b - postdmrg_central_entropy_b)/central_entropy_b;
 
-  while((relative_diff_a > 0.01) || (relative_diff_b > 0.01)){
+  while((relative_diff_a > 0.001) || (relative_diff_b > 0.001)){
     int nswep = 4;
     auto sweeps = Sweeps(nswep);
     sweeps.maxdim() = MaxBondDim;
@@ -145,8 +145,8 @@ MPS dmrg_sequence(Boson sites,
     central_entropy_a = postdmrg_central_entropy_a;
     central_entropy_b = postdmrg_central_entropy_b;
 
-    postdmrg_central_entropy_a = entanglement_entropy(state, central_a);
-    postdmrg_central_entropy_b = entanglement_entropy(state, central_b);
+    postdmrg_central_entropy_a = entanglement_entropy(psi, central_a);
+    postdmrg_central_entropy_b = entanglement_entropy(psi, central_b);
 
     relative_diff_a = fabs(central_entropy_a - postdmrg_central_entropy_a)/central_entropy_a;
     relative_diff_b = fabs(central_entropy_b - postdmrg_central_entropy_b)/central_entropy_b;
