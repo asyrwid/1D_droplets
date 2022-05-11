@@ -69,17 +69,23 @@ tuple<MPO, MPO, MPO, MPO, MPO, MPO, MPO> get_H(SiteSet& sites,
 }
 
 
-MPS initial_state(Boson sites, int Natoms){
-// Natoms = number of atoms in each component assuming that we have Na = Nb
+MPS initial_state(Boson sites, int Na, int Nb){
   auto state = InitState(sites);
   int M_sites = length(sites);
 
   for(int i = 1; i <= M_sites; ++i)
   { state.set(i,"0"); }
 
-  int Q = int(M_sites/2.) - Natoms;
-  for(int s = Q; s < Q + 2*Natoms;  s += 2){
-    state.set(s-1, "1");
+  // a-atoms occupy odd [1,3,5,...] sites in the code while b-atoms occupy the even ones [2,4,6,...]
+  int Qa = int(M_sites/2.) - Na;
+  int Qb = int(M_sites/2.) - Nb;
+  if(Qa % 2 == 0){Qa += 1;} // must be odd
+  if(Qb % 2 != 0){Qb += 1;} // must be even
+
+  for(int s = Qa; s < Qa + 2*Na;  s += 2){
+    state.set(s, "1");
+  }
+  for(int s = Qb; s < Qb + 2*Nb;  s += 2){
     state.set(s, "1");
   }
   auto psi = MPS(state);
@@ -94,7 +100,8 @@ string get_string_filename(double g){
 }
 
 
-string parameters_to_filename(int Natoms,
+string parameters_to_filename(int Na,
+                              int Nb,
                               int L,
                               int maxOccupation,
                               double t,
@@ -102,7 +109,7 @@ string parameters_to_filename(int Natoms,
                               double r,
                               int MaxBondDim){
 
-  string str_Natoms = "Natoms." + str(Natoms);
+  string str_Natoms = "Na." + str(Na) + "_Nb." + str(Nb);
   string str_L = "_L." + str(L);
   string str_maxOccupation = "_MaxOcc." + str(maxOccupation);
   string str_MaxBondDim = "_MaxBondDim." + str(MaxBondDim);

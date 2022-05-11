@@ -9,9 +9,10 @@ using namespace std;
 
 tuple<MPO, MPO, MPO, MPO, MPO, MPO, MPO> get_H(SiteSet& sites,  double t, double U, double U_ab);
 
-MPS initial_state(Boson sites, int Natoms);
+MPS initial_state(Boson sites, int Na, int Nb);
 
-string parameters_to_filename(int Natoms,
+string parameters_to_filename(int Na,
+                              int Nb,
                               int L,
                               int maxOccupation,
                               double t,
