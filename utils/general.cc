@@ -10,7 +10,9 @@ using namespace std;
 tuple<MPO, MPO, MPO, MPO, MPO, MPO, MPO> get_H(SiteSet& sites,
                                                double t,
                                                double U,
-                                               double U_ab){
+                                               double U_ab,
+                                               int Na,
+                                               int Nb){
   int M_sites = length(sites);
   int L = M_sites/2;
 
@@ -61,9 +63,38 @@ tuple<MPO, MPO, MPO, MPO, MPO, MPO, MPO> get_H(SiteSet& sites,
   edge_potential += wall, "N", M_sites;
   auto H_edge = toMPO(edge_potential);
 
+  // to punish any numerical leak of particles between odd and even sites
+  // we add terms 5*(Na - sum_ja op(n_ja))^2 + 5*(Nb - sum_jb op(n_jb))^2 
+  // so we need terms Nx^2, -2*Nx sum_jx n_jx, (sum_jx n_jx)^2, with x in [a, b]
+  double fine = 5;
+  auto punishment = AutoMPO(sites);
+  // -2*sum_x Nx sum_jx n_jx term
+  punishment += fine*Na*Na, "Id", 1;
+  punishment += fine*Nb*Nb, "Id", 1;
+  // sum_x sum_jx n_jx)^2 term
+  for (int j_site = 1; j_site <= L; j_site++){
+    int j_site_a = 2*j_site - 1;
+    int j_site_b = 2*j_site;
+    punishment += fine*(-2*Na), "N", j_site_a;
+    punishment += fine*(-2*Nb), "N", j_site_b;
+  }
+  // sum_x sum_jx n_jx)^2 term
+  for (int j_site_1 = 1; j_site_1 <= L; j_site_1++){
+    int j_site_a_1 = 2*j_site_1 - 1;
+    int j_site_b_1 = 2*j_site_1;
+    for (int j_site_2 = 1; j_site_2 <= L; j_site_2++){
+      int j_site_a_2 = 2*j_site_2 - 1;
+      int j_site_b_2 = 2*j_site_2;
+      punishment += fine, "N", j_site_a_1, "N", j_site_a_2;
+      punishment += fine, "N", j_site_b_1, "N", j_site_b_2;
+    }
+  }
+  auto H_punishment = toMPO(punishment);
+
   auto H_a = sum(H_hop_a, H_aa);
   auto H_b = sum(H_hop_b, H_bb);
-  auto H_total = sum(sum(sum(H_a, H_b), H_ab), H_edge);
+  auto H_total0 = sum(sum(sum(H_a, H_b), H_ab), H_edge);
+  auto H_total = sum(H_total0, H_punishment);
 
   return make_tuple(H_total, H_hop_a, H_hop_b, H_aa, H_bb, H_ab, H_edge);
 }

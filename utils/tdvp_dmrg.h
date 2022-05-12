@@ -10,9 +10,9 @@ using namespace std;
 MPS imag_time_evol(Boson sites,
                    MPS state,
                    MPO Hamiltonian,
-                   int NoOfSteps = 5,
-                   int nosweeps = 4,
-                   Real dt_bysweep = 0.02,
+                   int NoOfSteps = 2,
+                   int nosweeps = 2,
+                   Real dt_bysweep = 0.01,
                    int MaxBondDim = 200);
 
 MPS dmrg_sequence(Boson sites,

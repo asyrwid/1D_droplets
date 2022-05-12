@@ -40,7 +40,7 @@ auto H_bb = toMPO(AutoMPO(sites));
 auto H_ab = toMPO(AutoMPO(sites));
 auto H_edge = toMPO(AutoMPO(sites));
 
-tie(H_total, H_hop_a, H_hop_b, H_aa, H_bb, H_ab, H_edge) = get_H(sites, t, U, U_ab);
+tie(H_total, H_hop_a, H_hop_b, H_aa, H_bb, H_ab, H_edge) = get_H(sites, t, U, U_ab, Na, Nb);
 printfln("Maximum bond dimension of H is %d",maxLinkDim(H_total));
 
 auto psi0 = initial_state(sites, Na, Nb);
