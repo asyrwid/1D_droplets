@@ -62,7 +62,7 @@ vector<string> column_names_scalars = {"# h_a", "h_b", "h_ab", "f_SF"};
 
 prepare_file(column_names_dens_entrs, densities_entropies);
 prepare_file(column_names_conv_params, convergence_params);
-prepare_file(column_names_scalars, scalars );
+prepare_file(column_names_scalars, scalars);
 
 // Warm up with a few steps of imaginary time evolution;
 MPS psi1 = imag_time_evol(sites, psi0, H_total);

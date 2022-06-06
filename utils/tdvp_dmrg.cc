@@ -16,7 +16,8 @@ MPS imag_time_evol(Boson sites,
                    int NoOfSteps,
                    int nosweeps,
                    Real dt_bysweep,
-                   int MaxBondDim)
+                   int MaxBondDim
+                   )
 {
   Real tstep = nosweeps*dt_bysweep; // time evolved during the single round of sweeps
 
@@ -78,7 +79,8 @@ MPS dmrg_sequence(Boson sites,
                   std::string densities_entropies,
                   std::string convergence_params,
                   std::string sites_file,
-                  std::string mps_file){
+                  std::string mps_file
+                  ){
 
   MPO H_total = H_terms[0];
 

@@ -16,6 +16,7 @@ tuple<MPO, MPO, MPO, MPO, MPO, MPO, MPO> get_H(SiteSet& sites,
   int M_sites = length(sites);
   int L = M_sites/2;
 
+  auto total = AutoMPO(sites);
   // kinetic terms
   auto hopping_a = AutoMPO(sites);
   auto hopping_b = AutoMPO(sites);
@@ -26,6 +27,11 @@ tuple<MPO, MPO, MPO, MPO, MPO, MPO, MPO> get_H(SiteSet& sites,
     hopping_a += -t, "Adag", j_site_a + 2, "A", j_site_a;
     hopping_b += -t, "Adag", j_site_b, "A", j_site_b + 2;
     hopping_b += -t, "Adag", j_site_b + 2, "A", j_site_b;
+
+    total += -t, "Adag", j_site_a, "A", j_site_a + 2;
+    total += -t, "Adag", j_site_a + 2, "A", j_site_a;
+    total += -t, "Adag", j_site_b, "A", j_site_b + 2;
+    total += -t, "Adag", j_site_b + 2, "A", j_site_b;
   }
   auto H_hop_a = toMPO(hopping_a);
   auto H_hop_b = toMPO(hopping_b);
@@ -40,6 +46,11 @@ tuple<MPO, MPO, MPO, MPO, MPO, MPO, MPO> get_H(SiteSet& sites,
     interaction_aa += -0.5*U, "N", j_site_a;
     interaction_bb +=  0.5*U, "N", j_site_b, "N", j_site_b;
     interaction_bb += -0.5*U, "N", j_site_b;
+    
+    total +=  0.5*U, "N", j_site_a, "N", j_site_a;
+    total += -0.5*U, "N", j_site_a;
+    total +=  0.5*U, "N", j_site_b, "N", j_site_b;
+    total += -0.5*U, "N", j_site_b;
   }
   auto H_aa = toMPO(interaction_aa);
   auto H_bb = toMPO(interaction_bb);
@@ -50,33 +61,39 @@ tuple<MPO, MPO, MPO, MPO, MPO, MPO, MPO> get_H(SiteSet& sites,
     int j_site_a = 2*j_site - 1;
     int j_site_b = 2*j_site;
     interaction_ab += U_ab, "N", j_site_a, "N", j_site_b;
+
+    total += U_ab, "N", j_site_a, "N", j_site_b;
   }
   auto H_ab = toMPO(interaction_ab);
 
   // Hard wall at the edges choose value different than 0 if you want to
   // have additional potential at the first and last sites in the system.
   auto edge_potential = AutoMPO(sites);
-  double wall = 1000;
+  double wall = 0.;
   edge_potential += wall, "N", 1;
   edge_potential += wall, "N", M_sites-1;
   edge_potential += wall, "N", 2;
   edge_potential += wall, "N", M_sites;
+
+  total += wall, "N", 1;
+  total += wall, "N", M_sites-1;
+  total += wall, "N", 2;
+  total += wall, "N", M_sites;
   auto H_edge = toMPO(edge_potential);
 
   // to punish any numerical leak of particles between odd and even sites
-  // we add terms 5*(Na - sum_ja op(n_ja))^2 + 5*(Nb - sum_jb op(n_jb))^2 
+  // we add terms fine*(Na - sum_ja op(n_ja))^2 + 1000*(Nb - sum_jb op(n_jb))^2 
   // so we need terms Nx^2, -2*Nx sum_jx n_jx, (sum_jx n_jx)^2, with x in [a, b]
-  double fine = 5;
-  auto punishment = AutoMPO(sites);
+  double fine = 0.1;
   // -2*sum_x Nx sum_jx n_jx term
-  punishment += fine*Na*Na, "Id", 1;
-  punishment += fine*Nb*Nb, "Id", 1;
+  total += fine*Na*Na, "Id", L;
+  total += fine*Nb*Nb, "Id", L;
   // sum_x sum_jx n_jx)^2 term
   for (int j_site = 1; j_site <= L; j_site++){
     int j_site_a = 2*j_site - 1;
     int j_site_b = 2*j_site;
-    punishment += fine*(-2*Na), "N", j_site_a;
-    punishment += fine*(-2*Nb), "N", j_site_b;
+    total += fine*(-2*Na), "N", j_site_a;
+    total += fine*(-2*Nb), "N", j_site_b;
   }
   // sum_x sum_jx n_jx)^2 term
   for (int j_site_1 = 1; j_site_1 <= L; j_site_1++){
@@ -84,17 +101,13 @@ tuple<MPO, MPO, MPO, MPO, MPO, MPO, MPO> get_H(SiteSet& sites,
     int j_site_b_1 = 2*j_site_1;
     for (int j_site_2 = 1; j_site_2 <= L; j_site_2++){
       int j_site_a_2 = 2*j_site_2 - 1;
-      int j_site_b_2 = 2*j_site_2;
-      punishment += fine, "N", j_site_a_1, "N", j_site_a_2;
-      punishment += fine, "N", j_site_b_1, "N", j_site_b_2;
+      int j_site_b_2 = 2*j_site_2;      
+      total += fine, "N", j_site_a_1, "N", j_site_a_2;
+      total += fine, "N", j_site_b_1, "N", j_site_b_2;
     }
   }
-  auto H_punishment = toMPO(punishment);
 
-  auto H_a = sum(H_hop_a, H_aa);
-  auto H_b = sum(H_hop_b, H_bb);
-  auto H_total0 = sum(sum(sum(H_a, H_b), H_ab), H_edge);
-  auto H_total = sum(H_total0, H_punishment);
+  auto H_total = toMPO(total);
 
   return make_tuple(H_total, H_hop_a, H_hop_b, H_aa, H_bb, H_ab, H_edge);
 }
@@ -282,7 +295,8 @@ void collect_densities_entropies(Boson sites,
 void collect_convergence_parameters(Boson sites,
                                     MPS state,
                                     vector<MPO> H_terms, // {H_total, H_hop_a, H_hop_b, H_aa, H_bb, H_ab}
-                                    std::string convergence_params){
+                                    std::string convergence_params
+                                    ){
   int L = int(length(state)/2);
   int central_a = L;
   int central_b = L;

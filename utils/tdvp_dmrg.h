@@ -22,4 +22,5 @@ MPS dmrg_sequence(Boson sites,
                   std::string densities_entropies,
                   std::string convergence_params,
                   std::string sites_file,
-                  std::string mps_file);
+                  std::string mps_file
+                  );
