@@ -23,6 +23,7 @@ double r = atof(argv[7]);
 double U_ab = -U*(1-r);
 int MaxBondDim = atoi(argv[8]);
 string dir = argv[9];
+double entropy_epsilon = atof(argv[10]);
 
 string parameters = parameters_to_filename(Na, Nb, L, maxOccupation, t, U, r, MaxBondDim);
 
@@ -68,9 +69,9 @@ prepare_file(column_names_scalars, scalars);
 MPS psi1 = imag_time_evol(sites, psi0, H_total);
 // then perform DMRG to obtain the ground state and
 vector<MPO> H_terms {H_total, H_hop_a, H_hop_b, H_aa, H_bb, H_ab};
-auto psi_GS =dmrg_sequence(sites, psi1, H_terms, MaxBondDim, // DMRG
-                           densities_entropies, convergence_params, sites_file, mps_file // file paths
-                          );
+auto psi_GS = dmrg_sequence(sites, psi1, H_terms, MaxBondDim, entropy_epsilon, // DMRG
+                            densities_entropies, convergence_params, sites_file, mps_file // file paths
+                           );
 
 save_correlations(sites, psi_GS, corrs, fourier_transforms, scalars);
 

@@ -76,6 +76,7 @@ MPS dmrg_sequence(Boson sites,
                   MPS state,
                   vector<MPO> H_terms, // {H_total, H_hop_a, H_hop_b, H_aa, H_bb, H_ab}
                   int MaxBondDim,
+		  double entropy_epsilon,
                   std::string densities_entropies,
                   std::string convergence_params,
                   std::string sites_file,
@@ -124,7 +125,7 @@ MPS dmrg_sequence(Boson sites,
   double relative_diff_a = fabs(central_entropy_a - postdmrg_central_entropy_a)/central_entropy_a;
   double relative_diff_b = fabs(central_entropy_b - postdmrg_central_entropy_b)/central_entropy_b;
 
-  while((relative_diff_a > 0.001) || (relative_diff_b > 0.001)){
+  while((relative_diff_a > entropy_epsilon) || (relative_diff_b > entropy_epsilon)){
     int nswep = 4;
     auto sweeps = Sweeps(nswep);
     sweeps.maxdim() = MaxBondDim;

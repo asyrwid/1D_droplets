@@ -19,6 +19,7 @@ MPS dmrg_sequence(Boson sites,
                   MPS state,
                   vector<MPO> H_terms, // {H_total, H_hop_a, H_hop_b, H_aa, H_bb, H_ab}
                   int MaxBondDim,
+		  double entropy_epsilon,
                   std::string densities_entropies,
                   std::string convergence_params,
                   std::string sites_file,
